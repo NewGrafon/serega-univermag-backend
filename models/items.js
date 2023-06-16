@@ -23,6 +23,11 @@ const items = new mongoose.Schema({
         min: 0,
         default: 0
     },
+    image: {
+        type: Object || null,
+        required: false,
+        default: null
+    },
     created: {
         type: Date,
         required: true,

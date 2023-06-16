@@ -10,6 +10,7 @@ const fs = require('fs'),
     path = require('path'),
     passport = require("passport"),
     users = require("./models/users"),
+    items = require("./models/items"),
     bodyParser = require("body-parser"),
     bcrypt = require("bcrypt"),
     initializePassport = require("./passport-config.js"),
@@ -21,8 +22,8 @@ const fs = require('fs'),
     MongoURL = `mongodb://${MongoServerIP}:27017/serega-univermag`;
 
 
-app.use(express.json());
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(express.json({ limit: 16000000 * 1.1 }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '500mb' }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -172,7 +173,41 @@ app.get('/get_account_info', checkAuthenticated, async (req, res) => {
     });
 });
 
-app.get('/admin-panel', checkAdmin)
+app.get('/get-item/:id', async (req, res) => {
+    const id = req.params.id;
+    await res.json(await items.findOne({ _id: id }, { __v: 0 }));
+});
+
+app.get('/get-items', async (req, res) => {
+   await res.json(await items.find({}, { __v: 0 }));
+});
+
+app.post('/create-item', checkAdmin, async (req, res) => {
+    const body = req.body;
+
+    const item = new items({
+        name: body.name,
+        description: body.description,
+        category: body.category,
+        price: body.price,
+        weight: body.weight,
+        image: body.image
+    });
+
+    item.save()
+        .then(() => {
+            return res.json({
+                result: true,
+                error: false
+            });
+        })
+        .catch(() => {
+            return res.json({
+                result: false,
+                error: 'Произошла неизвестная ошибка, попробуйте еще раз!'
+            });
+        })
+});
 
 /* /////// */
 /* ФУНКЦИИ */
@@ -240,7 +275,8 @@ async function getUser(req, res) {
 
 async function checkAdmin(req, res, next) {
     await RequestTryCatch(req, res, async () => {
-        if (req.isAuthenticated() && req.user.accountType >= 1) {
+        const session = await req.user.clone();
+        if (req.isAuthenticated() && session.accountType >= 1) {
             return next();
         } else {
             return res.json({
@@ -248,4 +284,23 @@ async function checkAdmin(req, res, next) {
             });
         }
     });
+}
+
+async function validAndEditImageToDB(reqFile) {
+    if (reqFile) {
+        console.log(reqFile)
+        try {
+            const acceptedMimetypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/bmp', 'image/gif']
+            if (reqFile.size > 16000000 /* 16МБ */ || !acceptedMimetypes.includes(reqFile.mimetype)) {
+                return null;
+            }
+
+            return {
+                mimetype: reqFile.mimetype,
+                buffer: fs.readFileSync(reqFile.tempFilePath)
+            };
+        } catch (e) {
+            console.error(e)
+        }
+    }
 }
