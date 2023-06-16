@@ -209,6 +209,23 @@ app.post('/create-item', checkAdmin, async (req, res) => {
         })
 });
 
+app.get('/remove-item/:id', checkAdmin, async (req, res) => {
+    const id = req.params.id;
+    items.deleteOne({ _id: id })
+        .then(() => {
+            return res.json({
+                result: true,
+                error: null
+            });
+        })
+        .catch(() => {
+            return res.json({
+                result: false,
+                error: 'Произошла неизвестная ошибка!'
+            });
+        });
+});
+
 /* /////// */
 /* ФУНКЦИИ */
 /* /////// */
