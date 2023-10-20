@@ -86,7 +86,7 @@ async function start() {
             useUnifiedTopology: true
         }).then(() => {
             console.log('SUCCESSFUL CONNECTION TO DB!');
-            app.listen(3011);
+            app.listen(3012);
         });
 
     } catch (e) {
